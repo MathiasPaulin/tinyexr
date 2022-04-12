@@ -15,7 +15,7 @@ if(BUILD_INSTALLABLE_LIB)
     set(CMAKE_CXX_STANDARD 11)
     set(CMAKE_CXX_STANDARD_REQUIRED ON)
     set(CMAKE_CXX_EXTENSIONS OFF)
-
+    set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
     # use zlib or minizip if zlib is not found
     find_package(ZLIB QUIET)
     if(ZLIB_FOUND)
@@ -80,9 +80,19 @@ if(BUILD_INSTALLABLE_LIB)
     install(
         TARGETS ${TINY_EXR_TARGET}
         EXPORT ${TINY_EXR_TARGET}Targets
+        CONFIGURATIONS ${CMAKE_BUILD_TYPE}
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
         INCLUDES
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/tinyEXR
     )
+    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+        target_compile_definitions(${TINY_EXR_TARGET} PUBLIC _DEBUG)
+        if(MSVC OR MSVC_IDE)
+            install(FILES $<TARGET_PDB_FILE:${TINY_EXR_TARGET}> DESTINATION ${CMAKE_INSTALL_BINDIR})
+        endif()
+    endif()
 
 else()
     set(BUILD_TARGET "tinyexr")
