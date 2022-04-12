@@ -15,17 +15,43 @@ if(BUILD_INSTALLABLE_LIB)
     set(CMAKE_CXX_STANDARD 11)
     set(CMAKE_CXX_STANDARD_REQUIRED ON)
     set(CMAKE_CXX_EXTENSIONS OFF)
-    find_package(ZLIB REQUIRED)
+
+    # use zlib or minizip if zlib is not found
+    find_package(ZLIB QUIET)
+    if(ZLIB_FOUND)
+        message(STATUS "tinyEXR uses zlib")
+        set(tinyEXR_USES_ZLIB True)
+    else()
+        message(STATUS "tinyEXR uses miniz")
+        set(tinyEXR_USES_ZLIB False)
+        enable_language(C)
+        add_library(miniz STATIC deps/miniz/miniz.c)
+        target_include_directories(miniz PRIVATE deps/miniz)
+    endif()
+
     set(TINYEXR_SOURCES ${PROJECT_SOURCE_DIR}/tinyexr.cc)
     add_library(${TINY_EXR_TARGET} SHARED  ${TINYEXR_SOURCES} tinyexr.h)
     add_library(${TINY_EXR_TARGET}::${TINY_EXR_TARGET} ALIAS ${TINY_EXR_TARGET})
     target_compile_features(${TINY_EXR_TARGET} PUBLIC cxx_std_11)
-    target_compile_definitions(${TINY_EXR_TARGET} PUBLIC TINYEXR_USE_MINIZ=0)
-    target_include_directories(
-        ${TINY_EXR_TARGET} PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
-        $<INSTALL_INTERFACE:include>
-    )
-    target_link_libraries(${TINY_EXR_TARGET} PUBLIC ZLIB::ZLIB)
+
+    if(tinyEXR_USES_ZLIB)
+        target_compile_definitions(${TINY_EXR_TARGET} PUBLIC TINYEXR_USE_MINIZ=0)
+        target_include_directories(
+            ${TINY_EXR_TARGET} PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+            $<INSTALL_INTERFACE:include>
+        )
+        target_link_libraries(${TINY_EXR_TARGET} PUBLIC ZLIB::ZLIB)
+    else()
+        target_compile_definitions(${TINY_EXR_TARGET} PUBLIC TINYEXR_USE_MINIZ=1)
+        target_include_directories(
+            ${TINY_EXR_TARGET}
+            PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/deps/miniz>
+            $<INSTALL_INTERFACE:include>
+        )
+        target_link_libraries(${TINY_EXR_TARGET} PRIVATE miniz)
+    endif()
+
     # install header files, generate and install cmake config files for find_package()
     #
     include(GNUInstallDirs)
@@ -37,11 +63,19 @@ if(BUILD_INSTALLABLE_LIB)
     install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/tinyexr.h
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/tinyEXR
         )
+    if(NOT tinyEXR_USES_ZLIB)
+        install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/deps/miniz/miniz.h
+            DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/tinyEXR
+            )
+    endif()
     install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${TINY_EXR_TARGET}Config.cmake
         DESTINATION ${CMAKE_INSTALL_DATADIR}/${TINY_EXR_TARGET}/cmake
         )
     export(TARGETS ${TINY_EXR_TARGET}
         FILE ${CMAKE_CURRENT_BINARY_DIR}/${TINY_EXR_TARGET}Targets.cmake
+        )
+    install(EXPORT ${TINY_EXR_TARGET}Targets NAMESPACE ${TINY_EXR_TARGET}::
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/${TINY_EXR_TARGET}/cmake
         )
     install(
         TARGETS ${TINY_EXR_TARGET}
@@ -49,9 +83,7 @@ if(BUILD_INSTALLABLE_LIB)
         INCLUDES
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/tinyEXR
     )
-    install(EXPORT ${TINY_EXR_TARGET}Targets NAMESPACE ${TINY_EXR_TARGET}::
-        DESTINATION ${CMAKE_INSTALL_DATADIR}/${TINY_EXR_TARGET}/cmake
-        )
+
 else()
     set(BUILD_TARGET "tinyexr")
     set(SAMPLE_TARGET "test_tinyexr")
