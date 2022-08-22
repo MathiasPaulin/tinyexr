@@ -26,6 +26,7 @@ if(BUILD_INSTALLABLE_LIB)
         set(tinyEXR_USES_ZLIB False)
         enable_language(C)
         add_library(miniz STATIC deps/miniz/miniz.c)
+        set_property(TARGET miniz PROPERTY POSITION_INDEPENDENT_CODE ON)
         target_include_directories(miniz PRIVATE deps/miniz)
     endif()
 
