@@ -1,6 +1,6 @@
 # To use this cmake to compile and install a shared library, define BUILD_INSTALLABLE_LIB at configure time.
 # If BUILD_INSTALLABLE_LIB is not defined, this cmake file is for compile tests and is not usable for your cmake app.
-cmake_minimum_required(VERSION 3.18)
+cmake_minimum_required(VERSION 3.16)
 option(BUILD_INSTALLABLE_LIB "Build installable library" OFF)
 if(BUILD_INSTALLABLE_LIB)
     set(TINY_EXR_TARGET tinyEXR)
